@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Geofence Editor</title>
+<!-- inline-css: vendor/leaflet.css -->
+<!-- inline-css: src/app.css -->
+</head>
+<body>
+<div id="app">
+  <aside id="panel">
+    <header class="panel-head">
+      <div class="brand">
+        <span class="brand-icon" data-icon="inclusion"></span>
+        <div>
+          <h1>Geofence Editor</h1>
+          <p class="sub">Polygon fences for ArduPilot</p>
+        </div>
+      </div>
+      <button id="btn-undo" class="icon-btn" title="Undo (Ctrl+Z)" data-icon="undo"></button>
+    </header>
+
+    <section class="card">
+      <h2>Draw</h2>
+      <div class="draw-buttons">
+        <button id="btn-draw-incl" class="draw-btn incl" title="Draw an inclusion fence (vehicle must stay inside)">
+          <span data-icon="inclusion"></span><span class="plus" data-icon="plus"></span>
+        </button>
+        <button id="btn-draw-excl" class="draw-btn excl" title="Draw an exclusion fence (vehicle must stay out)">
+          <span data-icon="exclusion"></span><span class="plus" data-icon="plus"></span>
+        </button>
+        <button id="btn-return" class="draw-btn home" title="Place the fence return point (optional)">
+          <span data-icon="home"></span><span class="plus" data-icon="plus"></span>
+        </button>
+      </div>
+      <div id="draw-hint" class="hint" hidden>
+        <p>Click the map to add vertices. Double-click, press Enter or click the first vertex to finish.
+          Backspace removes the last vertex, Esc cancels.</p>
+        <div class="row">
+          <button id="btn-finish" class="btn primary">Finish</button>
+          <button id="btn-cancel" class="btn">Cancel</button>
+        </div>
+      </div>
+      <div id="return-hint" class="hint" hidden>
+        <p>Click the map to place the return point.</p>
+        <div class="row">
+          <button id="btn-return-clear" class="btn">Remove return point</button>
+          <button id="btn-return-cancel" class="btn">Cancel</button>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <div class="card-head">
+        <h2>Fences</h2>
+        <label class="check" title="Show the polygons that are actually exported after splitting">
+          <input type="checkbox" id="chk-pieces" checked> Show split polygons
+        </label>
+      </div>
+      <div id="fence-list" class="fence-list"></div>
+      <div id="extra-list" class="extra-list"></div>
+      <div class="row setting">
+        <label for="inp-maxv">Max vertices per polygon</label>
+        <input type="number" id="inp-maxv" min="12" max="255" step="1" value="69">
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Open</h2>
+      <label class="file-drop" id="file-drop">
+        <input type="file" id="inp-file" multiple accept=".kml,.kmz,.txt,.fence,.fen,.waypoints,.poly,.stg">
+        <span data-icon="open"></span>
+        <span>Choose or drop files<br><small>KML, KMZ, .fence, .txt, .waypoints, .fen, fence.stg</small></span>
+      </label>
+      <label class="check"><input type="checkbox" id="chk-recombine" checked> Recombine split fences when opening ArduPilot files</label>
+      <label class="check china-only" hidden><input type="checkbox" id="chk-kml-gcj"> KML/KMZ coordinates are GCJ-02 (from a Chinese map)</label>
+    </section>
+
+    <section class="card">
+      <h2>Export</h2>
+      <div class="row">
+        <label for="inp-name">File name</label>
+        <input type="text" id="inp-name" value="geofence" spellcheck="false">
+      </div>
+      <div class="export-grid">
+        <button class="btn export" id="btn-exp-fence"><b>.fence</b><small>Mission Planner</small></button>
+        <button class="btn export" id="btn-exp-txt"><b>.txt</b><small>Mission Planner</small></button>
+        <button class="btn export" id="btn-exp-stg"><b>fence.stg</b><small>SD card</small></button>
+        <button class="btn export" id="btn-exp-kml"><b>.kml</b><small>Google Earth</small></button>
+      </div>
+      <p id="export-summary" class="small muted"></p>
+    </section>
+
+    <section class="card">
+      <h2>Map</h2>
+      <div class="row">
+        <label for="sel-basemap">Background</label>
+        <select id="sel-basemap"></select>
+      </div>
+      <label class="check"><input type="checkbox" id="chk-labels" checked> Place names</label>
+      <label class="check"><input type="checkbox" id="chk-china"> Mainland China map (GCJ-02 correction)</label>
+      <form class="row" id="goto-form">
+        <input type="text" id="inp-goto" placeholder="Go to lat, lon" spellcheck="false">
+        <button class="btn" type="submit">Go</button>
+      </form>
+    </section>
+
+    <details class="card help">
+      <summary>Help</summary>
+      <ul>
+        <li><span class="mini" data-icon="inclusion"></span> <b>Inclusion</b>: the vehicle must stay inside.
+          Large polygons are split into overlapping polygons; the area inside <i>all</i> of them is the original fence.</li>
+        <li><span class="mini" data-icon="exclusion"></span> <b>Exclusion</b>: the vehicle must stay out.
+          Large polygons are split into adjoining polygons that together cover the original area.</li>
+        <li>Edit a fence with <span class="mini" data-icon="edit"></span>: drag vertices, drag the small midpoints to add
+          vertices, right-click (or Ctrl-click) a vertex to delete it.</li>
+        <li><b>.fence / .txt</b>: in Mission Planner open the Plan screen, switch the dropdown from Mission to Fence,
+          then Load File and Write.</li>
+        <li><b>fence.stg</b>: with <code>BRD_SD_FENCE</code> set, ArduPilot keeps the fence in <code>APM/fence.stg</code>
+          on the SD card. Copy the exported file there with the vehicle powered off.</li>
+        <li>Exported coordinates are always WGS-84, as ArduPilot expects, even in China mode.</li>
+      </ul>
+    </details>
+  </aside>
+  <main id="map-wrap">
+    <div id="map"></div>
+    <div id="coords" class="coords"></div>
+    <div id="toast" class="toast" hidden></div>
+  </main>
+</div>
+<!-- inline-js: vendor/leaflet.js -->
+<!-- inline-js: vendor/earcut.min.js -->
+<!-- inline-js: vendor/polygon-clipping.umd.min.js -->
+<!-- inline-js: src/geo.js -->
+<!-- inline-js: src/formats.js -->
+<!-- inline-js: src/app.js -->
+</body>
+</html>

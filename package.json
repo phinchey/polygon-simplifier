@@ -1,0 +1,10 @@
+{
+  "name": "geofence-editor",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Draw, split and export ArduPilot polygon geofences",
+  "scripts": {
+    "build": "node build.js",
+    "test": "node test/run.js"
+  }
+}
